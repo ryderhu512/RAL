@@ -198,6 +198,9 @@ class vc_apb_reg_env extends uvm_env;
 
 ## Memory Allocation Manager
 Refer [here](https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1a/html/files/reg/uvm_mem_mam-svh.html#uvm_mem_mam.get_memory).
+
+<img width="661" alt="Screenshot 2021-10-11 at 1 06 36 PM" src="https://user-images.githubusercontent.com/35386741/136736116-9b9cd2bf-1e7a-4f20-9159-22090031b744.png">
+
 - Note: create class vc_mem_base which has mam/cfg/policy declared inside.
 
 ```
@@ -303,6 +306,9 @@ When I change uvm_mem_region::burst_read value type to ref locally, it works the
 
 
 ## Memory backdoor access
+
+<img width="681" alt="Screenshot 2021-10-11 at 1 08 11 PM" src="https://user-images.githubusercontent.com/35386741/136736254-72a0c793-0693-43ed-ae46-537a52e509be.png">
+
 
 - Define backdoor access class and implement task write and read.
 ```
