@@ -2,7 +2,34 @@
 register model integration for register and memory
 
 
-## RAL access
+## RAL access type
+There are 4 values in RAL for each registers
+- reset value
+- value: real value?
+- desired value
+- miorred value
+
+And there are different operations:
+- get
+    - get desired value
+- set
+    - set desired value
+- predict
+    - set desired value and mirrored value, not perform DUT write or read
+- update
+    - perform write operation when desired value != mirrored value, mirrored value wouldn't change automatically.
+- mirror
+    - perform read operation when desired value != mirrored value, mirrored value wouldn't change automatically.
+- write
+    - perform write operation, not update desired value or mirrored value
+- read
+    - perform read operation, not update desired value or mirrored value
+
+mirrored value changed in a few ways:
+- call predict().
+- traffic collect from monitor and pass to predictor, mirrored value will update per value predictor collected.
+- backdoor write and read?
+- set_auto_predict() enabled and write/read call from frontdoor access.
 
 
 ## Basic RAL integration
