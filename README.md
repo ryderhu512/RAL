@@ -32,6 +32,13 @@ mirrored value(as well as desired value) update in a few ways:
 - call predict().
 - backdoor write and read?
 
+### Built-in register sequence
+
+```
+        uvm_reg_hw_reset_seq reg_seq = new();
+        reg_seq.model = m_regmodel;
+        reg_seq.start(m_env.m_agent.m_seqr);
+```
 
 ## Basic RAL integration
 What do you need:
