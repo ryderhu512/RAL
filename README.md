@@ -7,7 +7,7 @@ There are 4 values in RAL for each registers
 - reset value
 - value: real value?
 - desired value
-- miorred value
+- miorred value: this is the mirrored value of DUT, it's like a model value
 
 And there are different operations:
 - get
@@ -24,12 +24,13 @@ And there are different operations:
     - perform write operation, not update desired value or mirrored value
 - read
     - perform read operation, not update desired value or mirrored value
+    - when set_check_on_read() enabled, it compare read back value with mirrored value, raise error when mismatch found.
 
 mirrored value(as well as desired value) update in a few ways:
-- call predict().
 - per value predictor collected.
-- backdoor write and read?
 - set_auto_predict() enabled and write/read call from frontdoor access.
+- call predict().
+- backdoor write and read?
 
 
 ## Basic RAL integration
