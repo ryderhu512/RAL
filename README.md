@@ -40,6 +40,64 @@ mirrored value(as well as desired value) update in a few ways:
         reg_seq.start(m_env.m_agent.m_seqr);
 ```
 
+### Register backdoor access
+- add hdl path for dedicated field using add_hdl_path_slice
+```
+    virtual function void build();
+        this.default_map = create_map(.name             ("default_map"      ), 
+                                      .base_addr        (0                  ),
+                                      .n_bytes          (4                  ),
+                                      .endian           (UVM_LITTLE_ENDIAN  ), 
+                                      .byte_addressing  (0                  ));
+
+        this.cfg = ral_cfg_type::type_id::create("cfg",,get_full_name());
+        this.cfg.configure(this);
+        this.cfg.build();
+        this.default_map.add_reg(.rg        (this.cfg   ), 
+                                 .offset    ('h0        ), 
+                                 .rights    ("RW"       ), 
+                                 .unmapped  (0          ), 
+                                 .frontdoor (null       ));
+        this.cfg.add_hdl_path_slice(.name("reg0_ena"), .offset(0), .size(1));
+        this.cfg.add_hdl_path_slice(.name("reg0_cfg"), .offset(1), .size(31));
+
+        this.sta = ral_sta_type::type_id::create("sta",,get_full_name());
+        this.sta.configure(this);
+        this.sta.build();
+        this.default_map.add_reg(.rg        (this.sta   ), 
+                                 .offset    ('h4        ), 
+                                 .rights    ("RO"       ), 
+                                 .unmapped  (0          ), 
+                                 .frontdoor (null       ));
+        this.cfg.add_hdl_path_slice(.name("reg1_sta"), .offset(0), .size(32));
+
+    endfunction : build
+```
+- Add reg_block top level hdl path and register bank hdl path.
+
+```
+    function void build();
+        this.add_hdl_path("apb_ral_tb");
+
+        this.ram = ral_ram::type_id::create("ram",, get_full_name());
+        this.ram.configure(.parent(this), .hdl_path(""));
+
+        this.ctl = ral_block_ctl_type::type_id::create("ctl",, get_full_name());
+        this.ctl.configure(.parent(this), .hdl_path("u_apb_mem_a"));
+        this.ctl.build();
+```
+- Use backdoor access in tests
+    - Backdoor access happens in no time. In the case of DUT under reset, it updates DUT value but the value will reset again by the design. The backdoor write will be just like ignored.
+    - One the other hand, for frontdoor access, as master will normally wait reset release first, so it will stuck there and start write/read till reset released.
+
+```
+        m_regmodel.ctl.cfg.ena.set(1);
+        m_regmodel.ctl.cfg.update(status, UVM_BACKDOOR);
+        
+        m_regmodel.ctl.cfg.write(status, 1, UVM_BACKDOOR);
+```
+
+
 ## Basic RAL integration
 What do you need:
 - Register model(RAL)
