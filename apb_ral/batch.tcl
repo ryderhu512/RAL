@@ -1,0 +1,11 @@
+# ================================================================================
+# Date: 2021-10-10
+# Creator: Hu,Shiqing
+# E-mail: shiqing_hu@apple.com
+# Description: autogen by gentb.py
+# ================================================================================
+
+database -open waves -into waves.shm -default
+
+probe -create apb_ral_tb  -database waves
+probe -create apb_ral_tb  -depth all -all
