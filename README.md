@@ -198,17 +198,18 @@ class vc_apb_reg_env extends uvm_env;
 
 ## Memory Allocation Manager
 Refer [here](https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1a/html/files/reg/uvm_mem_mam-svh.html#uvm_mem_mam.get_memory).
-
+- Note: create class vc_mem_base which has mam/cfg/policy declared inside.
 
 ```
     uvm_mem_mam mam;
     uvm_mem_mam_cfg cfg;
     uvm_mem_mam_policy policy;
-    function void create_mam(string name="mam", int start_offset='0, int end_offset=this.mem_line_num-1);
+    function void create_mam(string name="mam", int start_offset='0, int end_offset=-1);
         cfg = new();
-        cfg.n_bytes = 4;
+        cfg.n_bytes = this.get_n_bytes();
         cfg.start_offset = start_offset;
         cfg.end_offset = end_offset;
+        if(end_offset == -1) cfg.end_offset = this.get_size();
         mam = new(name, cfg, this);
     endfunction
 
@@ -301,6 +302,97 @@ When I change uvm_mem_region::burst_read value type to ref locally, it works the
 
 
 
+## Memory backdoor access
 
+- Define backdoor access class and implement task write and read.
+```
+class vc_mem_backdoor extends uvm_reg_backdoor;
+    // hdl path to memory cells
+    string hdl_path;
+    // memory access is always word based, here it's number of words
+    int mem_line_num;
+    // number of bit in memory physical line
+    int mem_line_width;
 
+    bit verbose;
+
+    function new(string name);
+        super.new(name);
+    endfunction
+
+    virtual function configure(string hdl_path, int unsigned mem_line_num, 
+                               int unsigned mem_line_width=32, bit verbose=0);
+        this.hdl_path = hdl_path;
+        this.mem_line_num = mem_line_num;
+        this.mem_line_width = mem_line_width;
+        this.verbose = verbose;
+    endfunction
+
+    // For memory which has multiple cuts, as each cuts has different hdl path
+    // so need override function get_word_path accordingly.
+    virtual function string get_word_path(int word_idx);
+        int line_idx, word_offset;
+        string word_path;
+        line_idx = word_idx/(mem_line_width/32);
+        word_offset = word_idx%(mem_line_width/32);
+        word_path  = $sformatf("%s[%0d][%0d:%0d]", hdl_path, line_idx, word_offset*32+31, word_offset*32);
+        return word_path;
+    endfunction
+
+    virtual task write(uvm_reg_item rw);
+        rw.status = UVM_IS_OK;
+        for (int unsigned k = 0; k < rw.value.size(); k ++) begin
+            string word_path = get_word_path(rw.offset + k);
+
+            if(uvm_hdl_deposit(word_path, rw.value[k])) begin
+                if(verbose)
+                    `uvm_info ("mem_backdoor", $sformatf("[write] %s = 0x%0x", word_path, rw.value[k]), UVM_LOW) 
+            end else begin
+                rw.status = UVM_NOT_OK;
+                `uvm_error("mem_backdoor", $sformatf("[write] %s failed!", word_path)) 
+            end
+        end
+    endtask
+
+    virtual task read(uvm_reg_item rw);
+        rw.status = UVM_IS_OK;
+        for (int unsigned k = 0; k < rw.value.size(); k++) begin
+            string word_path = get_word_path(rw.offset + k);
+
+            if(uvm_hdl_read(word_path, rw.value[k])) begin
+                if(verbose)
+                    `uvm_info ("mem_backdoor", $sformatf("[read] %s = 0x%0x", word_path, rw.value[k]), UVM_LOW) 
+            end else begin 
+                rw.status = UVM_NOT_OK;
+                `uvm_error("mem_backdoor", $sformatf("[read] %s failed!", word_path)) 
+            end
+
+        end
+  endtask
+
+endclass:vc_mem_backdoor
+```
+- Attach backdoor class to memory model
+```
+class ral_ram extends vc_mem_base; // uvm_mem;
+    vc_mem_backdoor         ram_bd;
+    `uvm_object_utils(ral_ram)
+    function new(string name="ram");
+        super.new(.name         (name           ), 
+                  .size         ('h1000         ), // number of bytes
+                  .n_bits       (32             ), // number of bits per item/line, not physically line
+                  .access       ("RW"           ),
+                  .has_coverage (UVM_NO_COVERAGE));
+
+        ram_bd = new({name, "_bd"});
+        ram_bd.configure(.hdl_path("apb_ral_tb.u_apb_mem_a.ram"), .mem_line_num('h1000/4));
+        this.set_backdoor(ram_bd);
+    endfunction:new
+endclass:ral_ram
+```
+- Access memory from backdoor in tests
+```
+m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR);
+```
+    
 
