@@ -13,14 +13,45 @@ What do you need:
 <img width="577" alt="Screenshot 2021-10-11 at 8 12 50 AM" src="https://user-images.githubusercontent.com/35386741/136717666-76892e71-7318-41ac-a126-14c496fcf724.png">
 
 ### Example code:
+Since adapter and predictor are closely coupled with VIP or Verification Component, they can be encapsulated together. Here we create a new class 'reg_env' to include them all and provide function connect_reg which can be called in upper level.
 
+
+- Define adapter and predictor
+    - Note: for pipe-line bus like AHB, the read data will be provided in response, in this case, need set provides_responses in adapter. Otherwise, for non-pipeline bus like APB, don't need set this variable.
 ```
+class vc_apb_reg_adapter extends uvm_reg_adapter;
+     `uvm_object_utils (vc_apb_reg_adapter)
+    function new (string name = "vc_apb_reg_adapter");
+        super.new (name);
+    ////provides_responses = 1;
+    endfunction
+
+    virtual function uvm_sequence_item reg2bus (const ref uvm_reg_bus_op rw);
+        vc_apb_xact xact = new();
+        assert(xact.randomize() with {direction == ((rw.kind == UVM_WRITE) ? WRITE : READ);
+                                      addr      == rw.addr;
+                                      data      == rw.data;});
+        return xact;
+    endfunction
+    
+    virtual function void bus2reg (uvm_sequence_item bus_item, ref uvm_reg_bus_op rw);
+        vc_apb_xact xact;
+        if (! $cast (xact, bus_item)) begin
+            `uvm_fatal ("vc_apb_reg_adapter", "Failed to cast bus_item to xact")
+        end
+        rw.kind = (xact.direction == WRITE) ? UVM_WRITE : UVM_READ;
+        rw.addr =  xact.addr;
+        rw.data =  xact.data;
+        if(xact.resp != OKAY) rw.status = UVM_NOT_OK;
+   endfunction
+endclass:vc_apb_reg_adapter
+```
+```
+class vc_apb_reg_env extends uvm_env;
     vc_apb_reg_adapter              adapter;
     uvm_reg_predictor#(vc_apb_xact) predictor;
 
     virtual function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        uvm_report_info(get_type_name(),$sformatf("build_phase"), UVM_LOW);
         adapter = vc_apb_reg_adapter::type_id::create ("adapter");
         predictor = uvm_reg_predictor#(vc_apb_xact)::type_id::create("predictor", this);
     endfunction:build_phase
@@ -28,7 +59,6 @@ What do you need:
     virtual function void connect_reg(uvm_reg_map map, vc_apb_sequencer sequencer, vc_apb_monitor monitor);
         // active mode
         if(sequencer != null) map.set_sequencer(sequencer, adapter);
-
         // passive mode
         predictor.map     = map;
         predictor.adapter = adapter;
@@ -36,11 +66,241 @@ What do you need:
     endfunction
 ```
 
-
+- connect adapter, predictor, register map and VIP/VC sequencer.
 ```
+    virtual function void build_phase(uvm_phase phase);
+        // register model
+        m_regmodel = ral_reg_block::type_id::create ("m_regmodel", this);
+        m_regmodel.build();
+        void'(uvm_config_db #(ral_reg_block)::set (null, "uvm_test_top", "m_regmodel", m_regmodel));
+
+        // apb agent
+        m_cpu_a_m_reg_env = vc_apb_reg_env::type_id::create ("m_cpu_a_m_reg_env", this);
+        ... ...
+        
+    virtual function void connect_phase(uvm_phase phase);
         m_cpu_a_m_reg_env.connect_reg(.map          (m_regmodel.default_map     ),
                                       .sequencer    (m_cpu_a_m_agt.sequencer    ),
                                       .monitor      (m_cpu_a_m_agt.monitor      ));
 ```
+
+- Call RAL for register and memory access
+    - Note: for memory access, the address is offset within the memory.
+```
+        m_regmodel.ctl.cfg.ena.write (status, 'h1);
+        m_regmodel.ctl.cfg.ena.write (status, 'h0);
+        m_regmodel.ctl.cfg.cfg.write (status, 'hABC);
+        m_regmodel.ram.write (status, 0, 'h80);
+```
+
+## Frontdoor sequence for memory burst access
+In above basic RAL access, both register and memory operations are converted by adapter, and only single operations supported. How about burst operation in some bus like AHB? We can use frontdoor sequence to address this.
+
+<img width="639" alt="Screenshot 2021-10-11 at 8 53 59 AM" src="https://user-images.githubusercontent.com/35386741/136719404-8617d2e4-f7ea-4c3b-9510-c12c789b25ef.png">
+
+### Example code:
+- Define frontdoor sequence
+```
+class vc_apb_reg_frontdoor extends uvm_reg_frontdoor;
+
+    bit verbose;
+
+    `uvm_declare_p_sequencer(vc_apb_sequencer)
+
+    function new(string name);
+        super.new(name);
+    endfunction
+
+    task body();
+        uvm_mem mem;  
+        uvm_reg_addr_t base_addr;
+  
+        if (!$cast(mem, rw_info.element)) begin
+            `uvm_fatal(get_type_name(), "Could not cast rw_info.element to uvm_mem");
+        end
+        base_addr = mem.get_offset(0, rw_info.local_map) + rw_info.offset*4;
+        if(verbose)
+            `uvm_info ({"vc_apb_reg_frontdoor_", rw_info.map.get_name()}, $sformatf("[body][%s] base_addr = 0x%0x, size = %0d", 
+                rw_info.kind.name(), base_addr, rw_info.value.size()), UVM_LOW) 
+    
+        rw_info.status = UVM_IS_OK;
+        if (rw_info.kind == UVM_WRITE || rw_info.kind == UVM_BURST_WRITE) begin
+            send_write(base_addr);
+        end else begin
+            send_read(base_addr);
+        end
+
+        if(verbose)
+            `uvm_info ({"vc_apb_reg_frontdoor_", rw_info.map.get_name()}, $sformatf("[body] complete"), UVM_LOW) 
+    endtask
+
+    virtual task send_write(uvm_reg_addr_t base_addr);
+        vc_apb_xact  xact = new();
+
+        foreach(rw_info.value[k]) begin
+            assert(xact.randomize() with {direction     == WRITE;
+                                          addr          == base_addr + 4*k;
+                                          data          == rw_info.value[k];});
+            `uvm_send(xact)
+            // get_response(rsp); 
+            // assert($cast(xact, rsp));
+
+            if(xact.resp != OKAY) rw_info.status = UVM_NOT_OK;
+            if(verbose)
+                `uvm_info ({"vc_apb_reg_frontdoor_", rw_info.map.get_name()}, $sformatf("[body][%s] #%0d, addr = 0x%0x, data = 0x%0x", 
+                    rw_info.kind.name(), k, base_addr+4*k, rw_info.value[k]), UVM_LOW) 
+        end
+
+    endtask
+
+    virtual task send_read(uvm_reg_addr_t base_addr);
+        vc_apb_xact  xact = new();
+
+        foreach(rw_info.value[k]) begin
+            assert(xact.randomize() with {direction     == WRITE;
+                                          addr          == base_addr + 4*k;
+                                          data          == rw_info.value[k];});
+            `uvm_send(xact)
+            // get_response(rsp); 
+            // assert($cast(xact, rsp));
+
+            if(xact.resp != OKAY) rw_info.status = UVM_NOT_OK;
+            rw_info.value[k] = xact.data;
+            if(verbose)
+                `uvm_info ({"vc_apb_reg_frontdoor_", rw_info.map.get_name()}, $sformatf("[body][%s] #%0d, addr = 0x%0x, data = 0x%0x", 
+                    rw_info.kind.name(), k, base_addr+4*k, rw_info.value[k]), UVM_LOW) 
+        end
+
+    endtask
+
+endclass:vc_apb_reg_frontdoor
+```
+
+- add frontdoor into 'reg_env'
+```
+class vc_apb_reg_env extends uvm_env;
+    vc_apb_reg_frontdoor            frontdoor;
+    function new (string name="vc_apb_reg_env", uvm_component parent);
+        super.new (name, parent);
+        frontdoor = new({name, "_fd"});
+    endfunction : new 
+```
+
+- connect frontdoor sequence to register map and memory model
+```
+        m_regmodel.ram.set_frontdoor(m_cpu_a_m_reg_env.frontdoor, m_regmodel.default_map);
+```
+
+- Memory burst access
+```
+        m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93});
+```
+
+## Memory Allocation Manager
+Refer [here](https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1a/html/files/reg/uvm_mem_mam-svh.html#uvm_mem_mam.get_memory).
+
+
+```
+    uvm_mem_mam mam;
+    uvm_mem_mam_cfg cfg;
+    uvm_mem_mam_policy policy;
+    function void create_mam(string name="mam", int start_offset='0, int end_offset=this.mem_line_num-1);
+        cfg = new();
+        cfg.n_bytes = 4;
+        cfg.start_offset = start_offset;
+        cfg.end_offset = end_offset;
+        mam = new(name, cfg, this);
+    endfunction
+
+    function uvm_mem_mam get_mam();
+        if(mam == null) create_mam();
+        return mam;
+    endfunction
+
+    function uvm_mem_region request_region(int unsigned n_words, uvm_mem_mam_policy alloc = null);
+        if(mam == null) create_mam();
+        if(alloc == null) alloc = policy;
+        // uvm_report_info(get_type_name(), "called request_region!", UVM_LOW);
+        return mam.request_region(.n_bytes(4*n_words), .alloc(alloc));
+    endfunction
+
+    function void release_region(uvm_mem_region region);
+        mam.release_region(region);
+    endfunction
+
+    function void release_all_regions();
+        if(mam != null) begin
+            mam.release_all_regions();
+            uvm_report_info(get_type_name(), "called release_all_regions!", UVM_LOW);
+        end
+    endfunction
+```
+
+
+```
+    virtual task test_mem(int pattern, int burst_size, uvm_reg_map map=null);
+        uvm_status_e status;
+        uvm_reg_data_t wdata[], rdata[];
+        uvm_mem_region mrg;
+
+        wdata = new[burst_size];
+        rdata = new[burst_size];
+        std::randomize(wdata) with { wdata.size() == burst_size; foreach(wdata[k]) wdata[k][31:28] == pattern;};
+
+        mrg = m_reg_block.u_gnss_me_sram.request_region(burst_size, policy);
+
+        m_reg_block.u_gnss_me_sram.burst_write(status, mrg.get_start_offset(), wdata, UVM_FRONTDOOR, map);
+        m_reg_block.u_gnss_me_sram.burst_read (status, mrg.get_start_offset(), rdata, UVM_FRONTDOOR, map);
+
+        wdata.delete();
+        rdata.delete();
+        mrg.release_region();
+    endtask
+```
+
+### Potential bug in UVM library
+Currently I am using uvm_mem_mam and uvm_mem_region to perforce some memory tests and found one potential bug in uvm_mem_region::burst_read. It’s defined in file: <uvm library path>/sv/src/reg/uvm_mem_mam.svh
+
+My test is something like this:
+```
+        mrg = m_regmodel.mem_1.request_region(32);
+        mrg.burst_write(status, 0, wdata);
+        rdata = new[4];
+        mrg.burst_read (status, 0, rdata);
+```
+it turns out that burst_write is okay while burst_read always return 0, and when I check my frontdoor sequence, the value rw_info.value.size() is always 0.
+When I tried uvm_mem::burst_read, it works fine. Then I come to check the difference in both classes.
+```
+task uvm_mem_region::burst_read(output uvm_status_e       status,
+                                input  uvm_reg_addr_t     offset,
+                                output uvm_reg_data_t     value[], // Shiqing: should use ref rather than output here.
+                                input  uvm_path_e         path = UVM_DEFAULT_PATH,
+                                input  uvm_reg_map        map    = null,
+                                input  uvm_sequence_base  parent = null,
+                                input  int                prior = -1,
+                                input  uvm_object         extension = null,
+                                input  string             fname = "",
+                                input  int                lineno = 0);
+
+task uvm_mem::burst_read(output uvm_status_e       status,
+                         input  uvm_reg_addr_t     offset,
+                         ref    uvm_reg_data_t     value[],
+                         input  uvm_path_e         path = UVM_DEFAULT_PATH,
+                         input  uvm_reg_map        map = null,
+                         input  uvm_sequence_base  parent = null,
+                         input  int                prior = -1,
+                         input  uvm_object         extension = null,
+                         input  string             fname = "",
+                         input  int                lineno = 0);
+```
+We can see the value[] is defined as ref in uvm_mem while it's output in uvm_mem_region.
+
+In this context, since we need pass burst size implicitly through the size of value, so it should be ref rather than output in uvm_mem_region::burst_read as well.
+
+When I change uvm_mem_region::burst_read value type to ref locally, it works then.
+
+
+
+
 
 
