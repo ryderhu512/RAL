@@ -13,7 +13,7 @@ reg [31:0]  AHB_HADDR_s   ;
 reg         AHB_HWRITE_s  ;
 reg [1:0]   AHB_HTRANS_s  ;
 
-int ram['h1000/32]; // 4KB ram
+int ram['h1000/4]; // 4KB ram
 
 /*
 - 0x0000 - 0x0fff  --> ram
