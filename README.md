@@ -25,9 +25,9 @@ And there are different operations:
 - read
     - perform read operation, not update desired value or mirrored value
 
-mirrored value changed in a few ways:
+mirrored value(as well as desired value) update in a few ways:
 - call predict().
-- traffic collect from monitor and pass to predictor, mirrored value will update per value predictor collected.
+- per value predictor collected.
 - backdoor write and read?
 - set_auto_predict() enabled and write/read call from frontdoor access.
 
