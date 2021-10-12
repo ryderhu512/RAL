@@ -2,7 +2,7 @@
 register model integration for register and memory
 
 
-## RAL access type
+## RAL register value and access type
 There are 4 values in RAL for each registers
 - reset value
 - value: real value
