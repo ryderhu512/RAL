@@ -699,6 +699,33 @@ Access register and memory in test
         m_regmodel.ram.write (status, 0, 'h80, .map(m_regmodel.mst1_map));
         m_regmodel.ram.burst_write (status,  0, {'h90, 'h91, 'h92, 'h93}, .map(m_regmodel.mst1_map));
         m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR, .map(m_regmodel.mst1_map));
-
 ```
+More examples:
+```
+    virtual task test_mem(int pattern, int burst_size, uvm_reg_map map=null);
+        uvm_status_e status;
+        uvm_reg_data_t wdata[], rdata[];
+        uvm_mem_region mrg;
+
+        wdata = new[burst_size];
+        rdata = new[burst_size];
+        std::randomize(wdata) with { wdata.size() == burst_size; foreach(wdata[k]) wdata[k][31:28] == pattern;};
+
+        mrg = m_regmodel.ram.request_region(burst_size, policy);
+
+        m_regmodel.ram.burst_write(status, mrg.get_start_offset(), wdata, UVM_FRONTDOOR, map);
+        m_regmodel.ram.burst_read (status, mrg.get_start_offset(), rdata, UVM_FRONTDOOR, map);
+
+        wdata.delete();
+        rdata.delete();
+        mrg.release_region();
+    endtask
     
+    repeat(100) begin
+    fork
+        test_mem('hA, 100, m_regmodel.mst0_map)
+        test_mem('hB, 100, m_regmodel.mst1_map)
+    join
+    end
+    
+```
