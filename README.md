@@ -17,9 +17,13 @@ And there are different operations:
 - predict
     - set desired value and mirrored value, not perform DUT write or read
 - update
-    - perform write operation when desired value != mirrored value, mirrored value wouldn't change automatically.
+    - perform write operation when desired value != mirrored value, it will:
+      - copy desired_value to mirrored_value first
+      - then perform write.
 - mirror
-    - perform read operation when desired value != mirrored value, mirrored value wouldn't change automatically.
+    - perform read operation when desired value != mirrored value, it will:
+      - copy desired_value to mirrored_value first
+      - then perform read, and compare read value with mirrored_value if enabled.
 - write
     - perform write operation, not update desired value or mirrored value
 - read
@@ -30,7 +34,15 @@ mirrored value(as well as desired value) update in a few ways:
 - per value predictor collected.
 - set_auto_predict() enabled and write/read call from frontdoor access.
 - call predict().
-- backdoor write and read?
+- backdoor write and read
+
+### When and what to compare?
+- When read/mirror happen, it compares read back value with mirrored_value. And then update mirrored_value in register model.
+- Comapre only enabled when:
+  - set_check_on_read()
+  - Predict enable by either:
+    - set_auto_predict() -> explicit
+    - predictor component added -> implicit
 
 ### Built-in register sequence
 
