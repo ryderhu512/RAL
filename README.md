@@ -494,4 +494,97 @@ endclass:ral_ram
 m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR);
 ```
     
+## UVM register extension
+In normal register operation using RAL, there are only three variables we can pass from test to driver:
+    
+- Direction: write or read
+- Address
+- Data
 
+In some cases, we need pass more information to driver for register operations. Say in AHB, we need tell if the operation is privilege or not? if it's bufferable or not?
+    
+<img width="769" alt="Screenshot 2021-10-12 at 1 44 12 PM" src="https://user-images.githubusercontent.com/35386741/136898333-60cca2b8-b93d-4224-b689-1a282c3eb2d1.png">
+
+UVM RAL provides extension to solve above scenario.
+
+```
+   virtual task read(output    uvm_status_e      status,        
+                      input    uvm_reg_addr_t    offset,        
+                     output    uvm_reg_data_t    value,        
+                      input    uvm_path_e        path      = UVM_DEFAULT_PATH,
+                      input    uvm_reg_map       map       = null,
+                      input    uvm_sequence_base parent    = null,
+                      input    int               prior     = -1,
+                      input    uvm_object        extension = null,
+                      input    string            fname     = "",
+                      input    int               lineno    = 0 )
+```
+    
+#### Step-1
+Define reg_ext per bus protocol and master VIP.
+    
+```
+class vc_ahb_reg_ext extends uvm_object;
+
+    rand io_mode_t          io_mode;    // OPCODE, DATA, ...
+    rand priv_mode_t        priv_mode;  // USER, PRIVILEGED, ...
+    rand bit                bufferable;
+    rand bit                cacheable;
+    rand bit                lock;
+
+    `uvm_object_utils_begin(vc_ahb_reg_ext)
+        `uvm_field_enum(io_mode_t,io_mode,UVM_ALL_ON)
+        `uvm_field_enum(priv_mode_t,priv_mode,UVM_ALL_ON)
+        `uvm_field_int (bufferable, UVM_ALL_ON|UVM_HEX)
+        `uvm_field_int (cacheable, UVM_ALL_ON|UVM_HEX)
+        `uvm_field_int (lock, UVM_ALL_ON|UVM_HEX)
+    `uvm_object_utils_end
+
+    function new(string name = "vc_ahb_reg_ext");
+        super.new(name);
+    endfunction : new
+
+endclass : vc_ahb_reg_ext
+```
+    
+#### Step-2
+Get extension in adapter, assign the fields in xact.
+```
+    virtual function uvm_sequence_item reg2bus (const ref uvm_reg_bus_op rw);
+        vc_ahb_xact xact;
+
+        vc_ahb_reg_ext reg_ext;
+        uvm_reg_item item;
+        item = this.get_item();
+        void'($cast(reg_ext, item.extension));
+        if(reg_ext == null) reg_ext = new();
+
+        xact = new();
+        assert(xact.randomize() with {direction == ((rw.kind == UVM_WRITE) ? WRITE : READ);
+                                      size      == WORD;
+                                      burst     == SINGLE;
+                                      addr      == rw.addr;
+                                      data[0]   == rw.data;
+
+                                      io_mode   == reg_ext.io_mode;
+                                      priv_mode == reg_ext.priv_mode;
+                                      bufferable== reg_ext.bufferable;
+                                      cacheable == reg_ext.cacheable;
+                                      lock      == reg_ext.lock;
+
+                                      }) else
+            uvm_report_error(get_type_name(), "randomize failed");
+        return xact;
+    endfunction
+```
+    
+#### Step-3
+Add reg_ext as extension when doing register read/write.
+```
+        vc_ahb_reg_ext reg_ext = new();
+        assert(reg_ext.randomize() with{priv_mode == PRIVILEGED;});
+        m_regmodel.ctl.cfg.ena.write (status, 'h1, .extension(reg_ext));
+```
+    
+    
+    
