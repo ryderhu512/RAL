@@ -5,7 +5,7 @@ register model integration for register and memory
 ## RAL access type
 There are 4 values in RAL for each registers
 - reset value
-- value: real value?
+- value: real value
 - desired value
 - miorred value: this is the mirrored value of DUT, it's like a model value
 
@@ -25,24 +25,26 @@ And there are different operations:
       - copy desired_value to mirrored_value first
       - then perform read, and compare read value with mirrored_value if enabled.
 - write
-    - perform write operation, not update desired value or mirrored value
+    - perform write operation.
+    - only if predict enabled, it will update both desired value and mirrored value.
 - read
-    - perform read operation, not update desired value or mirrored value
+    - perform read operation
     - when set_check_on_read() enabled, it compare read back value with mirrored value, raise error when mismatch found.
+    - only if predict enabled, it will update both desired value and mirrored value.
 
 mirrored value(as well as desired value) update in a few ways:
-- per value predictor collected.
-- set_auto_predict() enabled and write/read call from frontdoor access.
-- call predict().
+- write/read operation predictor collected.
+- set_auto_predict() enabled and write/read operation from frontdoor access.
 - backdoor write and read
+- call predict().
 
 ### When and what to compare?
 - When read/mirror happen, it compares read back value with mirrored_value. And then update mirrored_value in register model.
-- Comapre only enabled when:
+- Comapare only enabled when:
   - set_check_on_read()
-  - Predict enable by either:
+  - predict enable by either:
     - set_auto_predict() -> explicit
-    - predictor component added -> implicit
+    - predictor component exists -> implicit
 
 ### Built-in register sequence
 
