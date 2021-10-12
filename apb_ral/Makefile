@@ -1,7 +1,7 @@
 # ================================================================================
 # Date: 2021-10-10
 # Creator: Hu,Shiqing
-# E-mail: shiqing_hu@apple.com
+# E-mail: schinghu@gmail.com
 # Description: autogen by gentb.py
 # ================================================================================
 
@@ -11,7 +11,7 @@ TC_LIBS = test_apb_ral_basic
 
 VC_AHB_DIR = $(trunk)/acm_gnss/tb/common/lib/GNSS_VIP/vc_ahb
 VC_APB_DIR = $(trunk)/acm_gnss/tb/common/lib/GNSS_VIP/vc_apb
-XRUN_OPTS  = -uvm -uvmhome $(shell ncroot)/tools/uvm-1.1/uvm_lib/uvm_sv
+XRUN_OPTS  = -uvm -uvmhome $(shell ncroot)/tools/methodology/UVM/CDNS-1.2/sv
 XRUN_OPTS += -64 -access +r+w+c
 XRUN_OPTS += +UVM_TESTNAME=$(TC) +UVM_VERBOSITY=UVM_LOW
 XRUN_OPTS += +incdir+$(VC_AHB_DIR)/sv $(VC_AHB_DIR)/sv/vc_ahb_pkg.sv 

@@ -1,7 +1,7 @@
 // ===============================================================================
 // Date: 2021-10-10
 // Creator: Hu,Shiqing
-// E-mail: shiqing_hu@apple.com
+// E-mail: schinghu@gmail.com
 // Description: autogen by gentb.py
 // ===============================================================================
 
@@ -34,6 +34,42 @@ class ahb_ral_base_test extends uvm_test;
      function void report_phase(uvm_phase phase);
          super.report_phase(phase);
      endfunction : report_phase
+
+    function void final_phase(uvm_phase phase);
+        uvm_report_server svr;
+        super.final_phase(phase);
+        svr = uvm_report_server::get_server();
+
+        if((svr.get_severity_count(UVM_FATAL) +
+            svr.get_severity_count(UVM_ERROR) == 0)) begin
+
+            $display("************************************");
+            $display("*                                  *");
+            $display("*  PPPPP     AA     SSSS    SSSS   *");
+            $display("*  PP  PP   AAAA   SS  SS  SS  SS  *");
+            $display("*  PP  PP  AA  AA  SS      SS      *");
+            $display("*  PPPPP   AA  AA   SSSS    SSSS   *");
+            $display("*  PP      AAAAAA      SS      SS  *");
+            $display("*  PP      AA  AA  SS  SS  SS  SS  *");
+            $display("*  PP      AA  AA   SSSS    SSSS   *");
+            $display("*                                  *");
+            $display("************************************");
+
+        end else begin
+            $display("************************************");
+            $display("*                                  *");
+            $display("*  FFFFFF    AA     II   LL        *");
+            $display("*  FF       AAAA    II   LL        *");
+            $display("*  FF      AA  AA   II   LL        *");
+            $display("*  FFFFFF  AA  AA   II   LL        *");
+            $display("*  FF      AAAAAA   II   LL        *");
+            $display("*  FF      AA  AA   II   LL        *");
+            $display("*  FF      AA  AA   II   LLLLLL    *");
+            $display("*                                  *");
+            $display("************************************");
+        end
+
+    endfunction: final_phase
 
 endclass:ahb_ral_base_test
 

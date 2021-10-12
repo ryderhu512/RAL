@@ -1,7 +1,7 @@
 // ===============================================================================
 // Date: 2021-10-10
 // Creator: Hu,Shiqing
-// E-mail: shiqing_hu@apple.com
+// E-mail: schinghu@gmail.com
 // Description: autogen by gentb.py
 // ===============================================================================
 
@@ -14,7 +14,7 @@ class test_ahb_ral_basic_seq extends ahb_ral_vseq;
     `uvm_declare_p_sequencer(ahb_ral_vseqr)
     vc_ahb_xact         ahb_xact, ahb_rsp;
     vc_ahb_base_seq     ahb_seq;
-
+    vc_ahb_reg_ext      reg_ext;
 
     function new(string name="");
         super.new(name);
@@ -53,12 +53,13 @@ class test_ahb_ral_basic_seq extends ahb_ral_vseq;
     
         m_regmodel.default_map.set_check_on_read();
         m_regmodel.default_map.set_auto_predict();
-
-        m_regmodel.ctl.cfg.ena.write (status, 'h1);
+        reg_ext = new();
+        assert(reg_ext.randomize() with{priv_mode == PRIVILEGED;});
+        m_regmodel.ctl.cfg.ena.write (status, 'h1, .extension(reg_ext));
         m_regmodel.ctl.cfg.ena.write (status, 'h0);
         m_regmodel.ctl.cfg.cfg.write (status, 'hABC);
         m_regmodel.ram.write (status, 0, 'h80);
-        m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93});
+        m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93}, .extension(reg_ext));
         m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR);
         #100ns;
 
@@ -106,7 +107,7 @@ class test_ahb_ral_basic extends ahb_ral_base_test;
     virtual function void build_phase(uvm_phase phase);
         super.build_phase(phase);
         uvm_config_db#(uvm_object_wrapper)::set(this, "m_env.m_vir_seqr.run_phase", "default_sequence", 
-            factory.find_by_name("test_ahb_ral_basic_seq"));
+            test_ahb_ral_basic_seq::type_id::get());
     endfunction:build_phase
 
     function void connect_phase(uvm_phase phase);

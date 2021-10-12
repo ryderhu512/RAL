@@ -86,8 +86,6 @@ class ral_block_ctl_type extends uvm_reg_block;
                                       .endian           (UVM_LITTLE_ENDIAN  ), 
                                       .byte_addressing  (0                  ));
 
-        //this.ctrl.configure(.blk_parent(this), .reffile_parent(null), .hdl_path("ctl_reg"));
-        //this.ctrl.add_hdl_path_slice(.name("ctl_reg"), .offset(0), .size(4));
         this.cfg = ral_cfg_type::type_id::create("cfg",,get_full_name());
         this.cfg.configure(this);
         this.cfg.build();
@@ -96,8 +94,8 @@ class ral_block_ctl_type extends uvm_reg_block;
                                  .rights    ("RW"       ), 
                                  .unmapped  (0          ), 
                                  .frontdoor (null       ));
-        this.cfg.add_hdl_path_slice(.name("ctl_reg"), .offset(0), .size(1));
-        this.cfg.add_hdl_path_slice(.name("ctl_reg"), .offset(1), .size(31));
+        this.cfg.add_hdl_path_slice(.name("reg0_ena"), .offset(0), .size(1));
+        this.cfg.add_hdl_path_slice(.name("reg0_cfg"), .offset(1), .size(31));
 
         this.sta = ral_sta_type::type_id::create("sta",,get_full_name());
         this.sta.configure(this);
@@ -107,6 +105,8 @@ class ral_block_ctl_type extends uvm_reg_block;
                                  .rights    ("RO"       ), 
                                  .unmapped  (0          ), 
                                  .frontdoor (null       ));
+        this.cfg.add_hdl_path_slice(.name("reg1_sta"), .offset(0), .size(32));
+
     endfunction : build
 
 endclass : ral_block_ctl_type
@@ -140,11 +140,13 @@ class ral_reg_block extends uvm_reg_block;
     endfunction
 
     function void build();
+        this.add_hdl_path("apb_ral_tb");
+
         this.ram = ral_ram::type_id::create("ram",, get_full_name());
         this.ram.configure(.parent(this), .hdl_path(""));
 
         this.ctl = ral_block_ctl_type::type_id::create("ctl",, get_full_name());
-        this.ctl.configure(.parent(this), .hdl_path(""));
+        this.ctl.configure(.parent(this), .hdl_path("u_apb_mem_a"));
         this.ctl.build();
 
 
