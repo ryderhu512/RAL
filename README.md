@@ -614,5 +614,91 @@ Add reg_ext as extension when doing register read/write.
         m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93}, .extension(reg_ext));
 ```
     
+## Register map application in multiple master system
     
+Say we have a multiple master system like below.
+    
+<img width="633" alt="Screenshot 2021-10-12 at 4 01 26 PM" src="https://user-images.githubusercontent.com/35386741/136916355-a2548225-4e44-41b5-a6a3-78788f65a1b9.png">
+
+Both master #0 and master #1 can access the same register block and memory block, but through different address of cause.
+    
+#### Step-1
+Define UVM register file with two reg_map.
+```
+class ral_reg_block extends uvm_reg_block;
+
+    uvm_reg_map        mst0_map;
+    uvm_reg_map        mst1_map;
+
+    rand ral_ram            ram;
+    rand ral_block_ctl_type ctl;
+
+    `uvm_object_utils(ral_reg_block)
+    function new(string name = "ral_reg_block");
+        super.new(name);
+    endfunction
+
+    function void build();
+        this.add_hdl_path("apb_ral_tb");
+
+        this.ram = ral_ram::type_id::create("ram",, get_full_name());
+        this.ram.configure(.parent(this), .hdl_path(""));
+
+        this.ctl = ral_block_ctl_type::type_id::create("ctl",, get_full_name());
+        this.ctl.configure(.parent(this), .hdl_path("u_apb_mem_a"));
+        this.ctl.build();
+
+        this.mst0_map = create_map(.name             ("mst0_map"         ), 
+                                   .base_addr        (0                  ), 
+                                   .n_bytes          (4                  ), 
+                                   .endian           (UVM_LITTLE_ENDIAN  ),
+                                   .byte_addressing  (0                  ));
+        this.mst0_map.add_mem   (this.ram,          32'h1000_0000, "RW");
+        this.mst0_map.add_submap(this.ctl.mst0_map, 32'h1000_1000);
+
+        this.mst1_map = create_map(.name             ("mst1_map"         ), 
+                                   .base_addr        (0                  ), 
+                                   .n_bytes          (4                  ), 
+                                   .endian           (UVM_LITTLE_ENDIAN  ),
+                                   .byte_addressing  (0                  ));
+        this.mst1_map.add_mem   (this.ram,          32'h2000_0000, "RW");
+        this.mst1_map.add_submap(this.ctl.mst1_map, 32'h2000_1000);
+
+        this.set_mst0_map(this.mst0_map);
+        this.lock_model();
+
+    endfunction:build
+
+endclass:ral_reg_block
+
+```
+    
+#### Step-2
+Connect reg_map to dedicated master
+```
+        m_mst0_reg_env.connect_reg(.map          (m_regmodel.mst0_map     ),
+                                   .sequencer    (m_mst0_agt.sequencer    ),
+                                   .monitor      (m_mst0_agt.monitor      ));
+        m_regmodel.ram.set_frontdoor(m_mst0_reg_env.frontdoor, m_regmodel.mst0_map);
+
+        m_mst1_reg_env.connect_reg(.map          (m_regmodel.mst1_map     ),
+                                   .sequencer    (m_mst1_agt.sequencer    ),
+                                   .monitor      (m_mst1_agt.monitor      ));
+        m_regmodel.ram.set_frontdoor(m_mst1_reg_env.frontdoor, m_regmodel.mst1_map);
+```
+    
+#### Step-3
+Access register and memory in test
+```
+        m_regmodel.ctl.cfg.cfg.write (status, 'hABC);
+        m_regmodel.ram.write (status, 0, 'h80);
+        m_regmodel.ram.burst_write (status,  0, {'h90, 'h91, 'h92, 'h93});
+        m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR);
+    
+        m_regmodel.ctl.cfg.cfg.write (status, 'hABC, .map(m_regmodel.mst1_map));
+        m_regmodel.ram.write (status, 0, 'h80, .map(m_regmodel.mst1_map));
+        m_regmodel.ram.burst_write (status,  0, {'h90, 'h91, 'h92, 'h93}, .map(m_regmodel.mst1_map));
+        m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR, .map(m_regmodel.mst1_map));
+
+```
     
