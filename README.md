@@ -48,6 +48,9 @@ mirrored value(as well as desired value) update in a few ways:
 
 ### Built-in register sequence
 
+<img width="923" alt="Screenshot 2021-10-12 at 9 40 39 PM" src="https://user-images.githubusercontent.com/35386741/136967123-5e9776c6-f216-4bb7-878c-230147b76b21.png">
+
+e.g.
 ```
         uvm_reg_hw_reset_seq reg_seq = new();
         reg_seq.model = m_regmodel;
@@ -55,6 +58,9 @@ mirrored value(as well as desired value) update in a few ways:
 ```
 
 ### Register backdoor access
+
+<img width="990" alt="Screenshot 2021-10-12 at 9 40 59 PM" src="https://user-images.githubusercontent.com/35386741/136967173-4ce23288-e297-4f75-be34-374d95d15a0a.png">
+
 - add hdl path for dedicated field using add_hdl_path_slice
 ```
     virtual function void build();
