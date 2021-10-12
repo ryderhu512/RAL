@@ -543,12 +543,20 @@ class vc_ahb_reg_ext extends uvm_object;
     function new(string name = "vc_ahb_reg_ext");
         super.new(name);
     endfunction : new
+    
+    constraint c_def {
+        soft io_mode == OPCODE;
+        soft priv_mode == USER;
+        soft bufferable == 0;
+        soft cacheable == 0;
+        soft lock == 0;
+    }
 
 endclass : vc_ahb_reg_ext
 ```
     
 #### Step-2
-Get extension in adapter, assign the fields in xact.
+Get extension in adapter and frontdoor sequence, assign the fields in xact.
 ```
     virtual function uvm_sequence_item reg2bus (const ref uvm_reg_bus_op rw);
         vc_ahb_xact xact;
@@ -578,12 +586,32 @@ Get extension in adapter, assign the fields in xact.
     endfunction
 ```
     
+```
+        vc_ahb_reg_ext reg_ext;
+        void'($cast(reg_ext, rw_info.extension));
+        if(reg_ext == null) reg_ext = new();
+
+        assert(xact.randomize() with {direction     == READ;
+                                      size          == WORD;
+                                      burst         == INCR;
+                                      addr          == base_addr;
+                                      data.size()   == rw_info.value.size();
+                                      io_mode       == reg_ext.io_mode;
+                                      priv_mode     == reg_ext.priv_mode;
+                                      bufferable    == reg_ext.bufferable;
+                                      cacheable     == reg_ext.cacheable;
+                                      lock          == reg_ext.lock;
+                                      });
+```
+    
 #### Step-3
 Add reg_ext as extension when doing register read/write.
 ```
         vc_ahb_reg_ext reg_ext = new();
         assert(reg_ext.randomize() with{priv_mode == PRIVILEGED;});
         m_regmodel.ctl.cfg.ena.write (status, 'h1, .extension(reg_ext));
+    
+        m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93}, .extension(reg_ext));
 ```
     
     
