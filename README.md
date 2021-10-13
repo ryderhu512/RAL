@@ -740,7 +740,11 @@ Connect reg_map to dedicated master
 ```
     
 #### Step-3
-Access register and memory in test
+Access register and memory in test. There are a few advantages compare to directly use VIP transaction:
+    - There is no hard-coded address in tests, no code need change if register or memory relocated in future.
+    - There is no VIP call in test, no code need change if master changed in future, say change from AHB to APB.
+    - Unified and easy access from different masters, just specify different map.
+    
 ```
         m_regmodel.ctl.cfg.cfg.write (status, 'hABC);
         m_regmodel.ram.write (status, 0, 'h80);
@@ -753,6 +757,8 @@ Access register and memory in test
         m_regmodel.ram.burst_write (status, 10, {'h90, 'h91, 'h92, 'h93}, UVM_BACKDOOR, .map(m_regmodel.mst1_map));
 ```
 More examples:
+    - Easy to request any random memory area/locations to access for any master.
+    - Support multiple masters access same memory but access different area to avoid access conflict.
 ```
     virtual task test_mem(int pattern, int burst_size, uvm_reg_map map=null);
         uvm_status_e status;
