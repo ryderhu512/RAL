@@ -312,10 +312,10 @@ class vc_apb_reg_env extends uvm_env;
 
 Since frontdoor sequence is connecting to register map and memory model only, why not just move it into reg_map?
 
-<img width="727" alt="Screenshot 2021-10-13 at 10 22 36 AM" src="https://user-images.githubusercontent.com/35386741/137056067-6315b7fb-7dbd-45cb-be59-d5ef8e9f2570.png">
+<img width="695" alt="Screenshot 2021-10-13 at 10 25 56 AM" src="https://user-images.githubusercontent.com/35386741/137056437-c97c3425-e48b-4e81-882d-5fdef23f8be9.png">
 
 ```
-class vc_mem_map#(type FRONTDOOR=vc_mem_frontdoor) extends uvm_reg_map;
+class vc_mem_map#(type FRONTDOOR=vc_reg_frontdoor) extends uvm_reg_map;
 
    `uvm_object_utils(vc_mem_map#(FRONTDOOR))
 
