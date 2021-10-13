@@ -308,6 +308,38 @@ class vc_apb_reg_env extends uvm_env;
 ```
         m_regmodel.ram.burst_write (status, 0, {'h90, 'h91, 'h92, 'h93});
 ```
+### Optimised structure
+
+Since frontdoor sequence is connecting to register map and memory model only, why not just move it into reg_map?
+
+<img width="727" alt="Screenshot 2021-10-13 at 10 22 36 AM" src="https://user-images.githubusercontent.com/35386741/137056067-6315b7fb-7dbd-45cb-be59-d5ef8e9f2570.png">
+
+```
+class vc_mem_map#(type FRONTDOOR=vc_mem_frontdoor) extends uvm_reg_map;
+
+   `uvm_object_utils(vc_mem_map#(FRONTDOOR))
+
+    FRONTDOOR       m_frontdoor;
+
+    function new(string name = "vc_mem_map");
+        super.new(name);
+        m_frontdoor = new({name,"_fd"});
+    endfunction
+
+    virtual function void add_mem(uvm_mem           mem,
+                                  uvm_reg_addr_t    offset,
+                                  string            rights = "RW",
+                                  bit               unmapped=0,
+                                  uvm_reg_frontdoor frontdoor=null);
+        if(frontdoor != null) begin
+            super.add_mem(mem, offset, rights, unmapped, frontdoor);
+        end else begin
+            super.add_mem(mem, offset, rights, unmapped, m_frontdoor);
+        end
+    endfunction:add_mem
+
+endclass:vc_mem_map
+```
 
 ## Memory Allocation Manager
 Refer [here](https://verificationacademy.com/verification-methodology-reference/uvm/docs_1.1a/html/files/reg/uvm_mem_mam-svh.html#uvm_mem_mam.get_memory).
