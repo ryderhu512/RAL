@@ -793,12 +793,16 @@ More examples:
     
 ## Important notes
 - if add +define+UVM_DISABLE_AUTO_ITEM_RECORDING, it would result RAL write/read stuck.
+    
     - Step-1: reg/uvm_reg_map.svh -> wait_on()
     <img width="766" alt="Screenshot 2021-10-18 at 11 02 36 PM" src="https://user-images.githubusercontent.com/35386741/137757382-16249690-13f2-4b52-b378-962bbc7eceb8.png">
+    
     - Step-2: base/uvm_transaction.svh
     <img width="785" alt="Screenshot 2021-10-18 at 11 03 23 PM" src="https://user-images.githubusercontent.com/35386741/137757510-f1e22129-b4b3-4b16-bad7-1fa6958c7100.png">
+    
     - Step-3: seq/uvm_sequence_base.svh
     <img width="777" alt="Screenshot 2021-10-18 at 11 03 56 PM" src="https://user-images.githubusercontent.com/35386741/137757599-d437535d-ba74-4589-a9b8-5fac4eddf2ba.png">
+    
     - Step-4: seq/uvm_sequencer_base.svh
     <img width="762" alt="Screenshot 2021-10-18 at 11 04 26 PM" src="https://user-images.githubusercontent.com/35386741/137757677-f664559d-a761-44e4-978b-8dce599197fc.png">
 
