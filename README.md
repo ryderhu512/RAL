@@ -789,3 +789,7 @@ More examples:
     end
     
 ```
+
+    
+## Important notes
+- if add +define+UVM_DISABLE_AUTO_ITEM_RECORDING, it would result RAL write/read stuck.
