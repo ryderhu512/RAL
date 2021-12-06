@@ -1,7 +1,6 @@
 # RAL integration
 register model integration for register and memory
 
-
 ## RAL register value and access type
 There are 4 values in RAL for each registers
 - reset value
@@ -38,6 +37,34 @@ mirrored value(as well as desired value) update in a few ways:
 - backdoor write and read
 - call predict().
 
+```
+   // "RO"       - W: no effect, R: no effect
+   // "RW"       - W: as-is, R: no effect
+   // "RC"       - W: no effect, R: clears all bits
+   // "RS"       - W: no effect, R: sets all bits
+   // "WRC"      - W: as-is, R: clears all bits
+   // "WRS"      - W: as-is, R: sets all bits
+   // "WC"       - W: clears all bits, R: no effect
+   // "WS"       - W: sets all bits, R: no effect
+   // "WSRC"     - W: sets all bits, R: clears all bits
+   // "WCRS"     - W: clears all bits, R: sets all bits
+   // "W1C"      - W: 1/0 clears/no effect on matching bit, R: no effect
+   // "W1S"      - W: 1/0 sets/no effect on matching bit, R: no effect
+   // "W1T"      - W: 1/0 toggles/no effect on matching bit, R: no effect
+   // "W0C"      - W: 1/0 no effect on/clears matching bit, R: no effect
+   // "W0S"      - W: 1/0 no effect on/sets matching bit, R: no effect
+   // "W0T"      - W: 1/0 no effect on/toggles matching bit, R: no effect
+   // "W1SRC"    - W: 1/0 sets/no effect on matching bit, R: clears all bits
+   // "W1CRS"    - W: 1/0 clears/no effect on matching bit, R: sets all bits
+   // "W0SRC"    - W: 1/0 no effect on/sets matching bit, R: clears all bits
+   // "W0CRS"    - W: 1/0 no effect on/clears matching bit, R: sets all bits
+   // "WO"       - W: as-is, R: error
+   // "WOC"      - W: clears all bits, R: error
+   // "WOS"      - W: sets all bits, R: error
+   // "W1"       - W: first one after ~HARD~ reset is as-is, other W have no effects, R: no effect
+   // "WO1"      - W: first one after ~HARD~ reset is as-is, other W have no effects, R: error
+   // "NOACCESS" - W: no effect, R: no effect
+```
 ### When and what to compare?
 - When read/mirror happen, it compares read back value with mirrored_value. And then update mirrored_value in register model.
 - Comapare only enabled when:
