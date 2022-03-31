@@ -84,6 +84,27 @@ e.g.
         reg_seq.start(m_env.m_agent.m_seqr);
 ```
 
+### Register field randomisation
+
+In random test, user can randomisation field like this:
+```
+assert(m_reg_block.g_cfg.cfg.randomize());
+m_reg_block.g_cfg.cfg.update(status);
+```
+
+In order support above field randomisation, **is_rand** must be enabled in RAL definition.
+```
+        this.cfg.configure(.parent                  (this   ), 
+                           .size                    (31     ), 
+                           .lsb_pos                 (1      ),
+                           .access                  ("RO"   ), 
+                           .volatile                (0      ), 
+                           .reset                   (1'h0   ), 
+                           .has_reset               (1      ), 
+                           .is_rand                 (1      ), 
+                           .individually_accessible (0      ));
+```
+
 ### Register backdoor access
 
 <img width="990" alt="Screenshot 2021-10-12 at 9 40 59 PM" src="https://user-images.githubusercontent.com/35386741/136967173-4ce23288-e297-4f75-be34-374d95d15a0a.png">
