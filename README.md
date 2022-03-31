@@ -92,7 +92,7 @@ assert(m_reg_block.g_cfg.cfg.randomize());
 m_reg_block.g_cfg.cfg.update(status);
 ```
 
-In order support above field randomisation, **is_rand** must be enabled in RAL definition.
+In order support above field randomisation, **is_rand** must be enabled in RAL definition:
 ```
         this.cfg.configure(.parent                  (this   ), 
                            .size                    (31     ), 
@@ -104,6 +104,11 @@ In order support above field randomisation, **is_rand** must be enabled in RAL d
                            .is_rand                 (1      ), 
                            .individually_accessible (0      ));
 ```
+
+### Register volatile features
+
+When **volatile** is set, register read check/compare will be disabled, even in _uvm_reg_hw_reset_seq_.
+
 
 ### Register backdoor access
 
