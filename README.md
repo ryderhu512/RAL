@@ -84,6 +84,24 @@ e.g.
         reg_seq.start(m_env.m_agent.m_seqr);
 ```
 
+If bit-type resource named “NO_REG_TESTS” or “NO_REG_HW_RESET_TEST” in the “REG::” namespace matches the full name of the block or register, the block or register is not tested.
+```
+uvm_resource_db#(bit)::set({"REG::",regmodel.blk.get_full_name(),".*"},
+                           "NO_REG_TESTS", 1, this);
+uvm_resource_db#(bit)::set({"REG::",regmodel.blk.get_full_name(),".*"},
+                           "NO_REG_HW_RESET_TEST", 1, this);
+```
+
+Here is the full list of switch for built-in sequences:
+```
+uvm_reg_hw_reset_seq          -- NO_REG_TESTS/NO_REG_ACCESS_TEST
+uvm_reg_bit_bash_seq          -- NO_REG_TESTS/NO_REG_BIT_BASH_TEST
+uvm_reg_access_seq            -- NO_REG_TESTS/NO_REG_ACCESS_TEST
+uvm_reg_mem_shared_access_seq -- NO_REG_TESTS/NO_REG_SHARED_ACCESS_TEST
+uvm_mem_access_seq            -- NO_MEM_TESTS/NO_MEM_ACCESS_TEST
+uvm_mem_walk_seq              -- NO_MEM_TESTS/NO_MEM_WALK_TEST
+```
+
 ### Register field randomisation
 
 In random test, user can randomisation field like this:
