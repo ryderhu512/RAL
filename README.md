@@ -67,8 +67,12 @@ mirrored value(as well as desired value) update in a few ways:
 ```
 ### When and what to compare?
 - When read/mirror happen, it compares read back value with mirrored_value. And then update mirrored_value in register model.
-- Comapare only enabled when:
+- Comapare only enabled when following two switches are turned on:
   - set_check_on_read()
+    - Alternatively, set UVM_CHECK in mirror and read operation like built-in register test sequence does, e.g.:
+    ```
+    regs[i].mirror(status, **UVM_CHECK**, UVM_FRONTDOOR, maps[d], this);
+    ```
   - predict enable by either:
     - set_auto_predict() -> explicit
     - predictor component exists -> implicit
