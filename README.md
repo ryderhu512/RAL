@@ -83,9 +83,14 @@ mirrored value(as well as desired value) update in a few ways:
 
 e.g.
 ```
-        uvm_reg_hw_reset_seq reg_seq = new();
-        reg_seq.model = m_regmodel;
-        reg_seq.start(m_env.m_agent.m_seqr);
+uvm_reg_hw_reset_seq reg_seq = new();
+reg_seq.model = m_regmodel;
+reg_seq.start(m_env.m_agent.m_seqr);
+```
+
+If there are multiple register maps, then use null as sequencer parameter.
+```
+reg_seq.start(null);
 ```
 
 If bit-type resource named “NO_REG_TESTS” or “NO_REG_HW_RESET_TEST” in the “REG::” namespace matches the full name of the block or register, the block or register is not tested.
